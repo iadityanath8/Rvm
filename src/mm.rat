@@ -1,0 +1,9 @@
+square:
+
+
+
+push 12
+push 10
+iadd
+
+call square
