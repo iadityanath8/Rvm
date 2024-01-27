@@ -2,7 +2,7 @@
 const std = @import("std");
 const print = std.debug.print;
 
-// allocations 
+// allocations
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const allocator = gpa.allocator();
 const eval = @import("rvme.zig");
@@ -13,52 +13,49 @@ const c = @cImport({
 });
 
 // constants
-const MAGIC_BYTE_SIZE:usize = 8;
-
+const MAGIC_BYTE_SIZE: usize = 8;
 
 // TODO: read a file and then evaluate the following bytecode in here
 
 //pub fn reader()
-  //  const file: ?*c.FILE = c.fopen(Self.name_to_be_assembled, "rb");
+//  const file: ?*c.FILE = c.fopen(Self.name_to_be_assembled, "rb");
 
-    //if (file == null) {
-      //   std.debug.print("Failed to open file '{s}'\n", .{Self.name_to_be_assembled});
-        //    return;
-   // }
+//if (file == null) {
+//   std.debug.print("Failed to open file '{s}'\n", .{Self.name_to_be_assembled});
+//    return;
+// }
 
-    //var buffer: [128]u8 = undefined;
+//var buffer: [128]u8 = undefined;
 
-    //_ = c.fread(buffer[0..], Self.byte_size, @as(c_ulong, @intCast(Self.program_size)), file);
+//_ = c.fread(buffer[0..], Self.byte_size, @as(c_ulong, @intCast(Self.program_size)), file);
 
-    //var r: [*]eval.Program = @ptrCast(@alignCast(&buffer));
-   // print("{any}\n", .{r[1]});
- // _ = c.fclose(file);
+//var r: [*]eval.Program = @ptrCast(@alignCast(&buffer));
+// print("{any}\n", .{r[1]});
+// _ = c.fclose(file);
 //
 //}
 
-fn disassembly(filename:[:0]u8) !void {
-    const file:?*c.FILE = c.fopen(filename,"rb");
+fn disassembly(filename: [:0]u8) !void {
+    const file: ?*c.FILE = c.fopen(filename, "rb");
 
-    if(file == null){
+    if (file == null) {
         return eval.Machine_Err.COULD_NOT_OPEN_FILE;
     }
-
-     _ = c.fseek(file, 0, c.SEEK_END);
+    _ = c.fseek(file, 0, c.SEEK_END);
     const fileSize = c.ftell(file);
     _ = c.fseek(file, 0, c.SEEK_SET);
-    
-    var buffer:[]u8 = try allocator.alloc(u8,MAGIC_BYTE_SIZE*@as(usize,@intCast(fileSize)));
+
+    var buffer: []u8 = try allocator.alloc(u8, MAGIC_BYTE_SIZE * @as(usize, @intCast(fileSize)));
     defer _ = allocator.free(buffer);
 
+    _ = c.fread(buffer.ptr, MAGIC_BYTE_SIZE, @as(c_ulong, @intCast(@divExact(fileSize, MAGIC_BYTE_SIZE))), file);
+    var r: [*]eval.Program = @ptrCast(@alignCast(buffer.ptr));
     
-    _ = c.fread(buffer.ptr, MAGIC_BYTE_SIZE,@as(c_ulong,@intCast(fileSize)), file);
-
-    
-    var r:[*]eval.Program = @ptrCast(@alignCast(buffer.ptr));
+    // emulation happens in here
     var emulator = eval.Rvm.new();
-    emulator.fill_prog(@as(u32,@intCast(fileSize)),r);
+    emulator.fill_prog(@as(u32, @intCast(@divExact(fileSize, MAGIC_BYTE_SIZE))), r);
     try emulator.evaluate_program();
-    emulator.stack_debug_print();
+    emulator.stack_debug_print();         
     _ = c.fclose(file);
 }
 
@@ -67,11 +64,7 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    // getting and printing the string of args in here
-    //print("{s}\n",.{args[1]});
     try disassembly(args[1]);
-    //print("{}\n",.{args.len});
-    //print("{}\n",.{@TypeOf(args)});
 }
 
 // type ==> [][:0]u8

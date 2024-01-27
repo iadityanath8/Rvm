@@ -1,112 +1,17 @@
 const std = @import("std");
+const fs = std.fs;
 const print = std.debug.print;
-const gpa = std.heap.GeneralPurposeAllocator(.{}){};
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const eval = @import("rvme.zig");
 
 const c = @cImport({
     @cInclude("stdio.h");
 });
 
-// pub fn main() void {
-//     const filename = "example.txt";
-//     const mode = "w"; // Specify the file opening mode (e.g., "w" for write)
 
-//     // Using `fopen` to open a file
-//     const file: ?*c.FILE = c.fopen(filename, mode);
-//     if (file == null) {
-//         std.debug.print("Failed to open file '{s}'\n", .{filename});
-//         return;
-//     }
-
-//     // Writing to the file using `fputs`
-//     const message = "Hello, Zig!\n";
-//     _ = c.fputs(message, file);
-
-//     // Closing the file using `fclose`
-//     _ = c.fclose(file);
-// }
-// pub fn main() void {
-//     const filename = "example.txt";
-//     const mode = "r"; // Specify the file opening mode (e.g., "r" for read)
-
-//     // Using `fopen` to open a file for reading
-//     const file: ?*c.FILE = c.fopen(filename, mode);
-//     if (file == null) {
-//         std.debug.print("Failed to open file '{s}'\n", .{filename});
-//         return;
-//     }
-
-//     // Determine the size of the file
-//     _ = c.fseek(file, 0, c.SEEK_END);
-//     const fileSize = c.ftell(file);
-//     _ = c.fseek(file, 0, c.SEEK_SET);
-
-//     // Read the file content into a buffer
-//     var buffer: [4096]u8 = undefined; // Adjust the buffer size as needed
-//     const bytesRead = c.fread(buffer[0..], 1, @as(c_ulong, @intCast(fileSize)), file);
-
-//     // Print the content (or process it as needed)
-//     std.debug.print("Read {} bytes from file '{s}':\n", .{ bytesRead, filename });
-//     std.debug.print("File Content:\n{s}\n", .{buffer[0..bytesRead]});
-
-//     // Close the file
-//     _ = c.fclose(file);
-// }
-
-// pub fn main() void {
-//     const filename = "enum_data.Rvm";
-//     const mode = "wb"; // Specify the file opening mode (e.g., "wb" for write in binary mode)
-
-//     // Using `fopen` to open a file for writing
-//     const file: ?*c.FILE = c.fopen(filename, mode);
-//     if (file == null) {
-//         std.debug.print("Failed to open file '{s}'\n", .{filename});
-//         return;
-//     }
-
-//     // Array of enums to be written
-//     const enumArray = [_]MyEnum{ MyEnum.Option1, MyEnum.Option2, MyEnum.Option3 };
-
-//     // Writing binary data to the file
-//     for (enumArray) |item| {
-//         const data = enumToBytes(item);
-//         _ = c.fwrite(&data, 1, @sizeOf(data), file);
-//     }
-
-//     // Closing the file
-//     _ = c.fclose(file);
-// }
-
-// pub fn main() void {
-//     const filename = "enum_data.Rvm";
-//     const mode = "rb"; // Specify the file opening mode (e.g., "rb" for read in binary mode)
-
-//     // Using `fopen` to open a file for reading
-//     const file: ?*c.FILE = c.fopen(filename, mode);
-//     if (file == null) {
-//         std.debug.print("Failed to open file '{s}'\n", .{filename});
-//         return;
-//     }
-
-//     // Determine the size of the file
-//     _ = c.fseek(file, 0, c.SEEK_END);
-//     const fileSize = c.ftell(file);
-//     _ = c.fseek(file, 0, c.SEEK_SET);
-
-//     // Read the file content into a buffer
-//     var buffer: [4096]u8 = undefined; // Adjust the buffer size as needed
-//     const bytesRead = c.fread(buffer[0..], 1, @as(c_ulong, @intCast(fileSize)), file);
-
-//     // Interpret binary data as enum values
-//     for (buffer[0..bytesRead]) |data| {
-//         const enumValue = @as(MyEnum, @enumFromInt(data));
-//         print("{any}\n", .{enumValue});
-//         // std.debug.print("Read enum value: {:d}\n", .{enumValue});
-//     }
-
-//     // Close the file
-//     _ = c.fclose(file);
-// }
+// constants
+const RVM_MAGIC_BYTE        = 8;
+const MAX_LINEAR_SIZE:usize = 123;
 
 pub const Assembly = struct {
     program_size: usize,
@@ -123,7 +28,6 @@ pub const Assembly = struct {
         // print("{any}", .{Self.program_array});
         var bytes: [*]u8 = @ptrCast(@alignCast(Self.program_array));
         const file: ?*c.FILE = c.fopen(Self.name_to_be_assembled, "wb");
-
         if (file == null) {
             print("Cannot open the file ERROR\n", .{});
             return;
@@ -143,55 +47,105 @@ pub const Assembly = struct {
 
         _ = c.fread(buffer.ptr, Self.byte_size, @as(c_ulong, @intCast(Self.program_size)), file);
 
-        //var r: [*]eval.Program = @ptrCast(@alignCast(buffer.ptr));
-        print("This{}\n",.{@sizeOf(eval.Program)});
+        //var r: [*]eval.Program = @ptrCast(@alignCast(buffer.ptr))
         return buffer;
     }
 };
 
-pub fn main() !void {
-    // var array = [_]eval.Program{ .{ .inst_set = eval.INST_SET.PUSH, .operand = 2 }, .{ .inst_set = eval.INST_SET.POP, .operand = -1 } };
+const string = []const u8;
+const mutstring = [MAX_LINEAR_SIZE]u8;
+const EQ = std.mem.eql;
 
-    // var as = Assembly.new(array, 2, @sizeOf(eval.Program), "astd.Rasm");
-    // as.writer();
-    // as.reader();
-    // var bytes: [*]u8 = @ptrCast(@alignCast(&array));
+const chunk = struct{
+    raw:[MAX_LINEAR_SIZE]u8,
+    len:usize,
 
-    // const filename = "astd.Rasm";
-    // const mode = "wb";
-    // const file: ?*c.FILE = c.fopen(filename, mode);
+    fn write(Self:*chunk,val:u8) void {
+        Self.raw[Self.len] = val;
+        Self.len += 1;
+    }
 
-    // if (file == null) {
-    //     std.debug.print("Failed to open file '{s}'\n", .{filename});
-    //     return;
-    // }
+    fn from_u8(Self:*chunk,val:[]u8) void {
+        var i:usize = 0;
+        while(i < val.len): (i += 1){
+            Self.raw[i] = val[i];
+        }
+        Self.len = i;
+    }
 
-    // _ = c.fwrite(bytes, @sizeOf(eval.Program), 2, file);
-    // _ = c.fclose(file);
+    fn eq(Self:chunk, a:[]const u8) bool {
+        var i:usize = 0;
+
+        if(Self.len > a.len){
+            return false;
+        }
+
+        while(i < a.len) : (i += 1){
+            if (Self.raw[i] != a[i]){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    fn out_slice(Self:*chunk) []const u8{
+        return Self.raw[0..Self.len];
+    }
+    
+    fn debug(Self:chunk) void {
+        var i:usize = 0;
+        while(i < Self.len) : (i += 1){
+            print("{c}",.{Self.raw[i]});
+        }
+        print("\n",.{});
+    }
+};
+
+fn parse_str_chunk(arrl:*std.ArrayList(chunk)) !void {
+    var i:usize = 0;
+    var rm = eval.Rvm.new();
+    
+    while(i < arrl.items.len) :(i += 1){
+        var it = std.mem.split(u8,arrl.items[i].out_slice()," ");
+        while(it.next()) |v|{
+            if(EQ(u8,v,"push")){
+                if(it.next()) |ii|{
+                    rm.push_program(.{.inst_set = eval.INST_SET.PUSH, .operand = try std.fmt.parseInt(i32,ii, 10)});
+                }
+            }else if(EQ(u8,v,"iadd")){
+                rm.push_program(.{.inst_set = eval.INST_SET.IADD, .operand = undefined});
+            }
+        }
+    }
+    const allocator = gpa.allocator();
+    
+    var as = Assembly.new(&rm.programs,rm.program_size,RVM_MAGIC_BYTE,"precomp.rasm",allocator);
+    as.writer();
 }
 
-// pub fn main() void {
-//     const filename = "astd.Rasm";
-//     const mode = "rb"; // Specify the file opening mode (e.g., "rb" for read in binary mode)
+pub fn convert_asm_to_bytes() !void {
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+    const file = try fs.cwd().openFile("mm.rat",.{});
+    defer file.close();
+    var b_reader = std.io.bufferedReader(file.reader());
+    var in_stream = b_reader.reader();
 
-//     // Using `fopen` to open a file for reading
-//     const file: ?*c.FILE = c.fopen(filename, mode);
-//     if (file == null) {
-//         std.debug.print("Failed to open file '{s}'\n", .{filename});
-//         return;
-//     }
+    var contents = std.ArrayList(chunk).init(allocator);
+    defer contents.deinit();
 
-//     _ = c.fseek(file, 0, c.SEEK_END);
-//     const fileSize = c.ftell(file);
-//     _ = c.fseek(file, 0, c.SEEK_SET);
+    var buffer:[1024]u8 = undefined;
 
-//     var buffer: [128]u8 = undefined;
-//     const bytesRead = c.fread(buffer[0..], @sizeOf(eval.Program), @as(c_ulong, @intCast(fileSize)), file);
+    while(try in_stream.readUntilDelimiterOrEof(&buffer,'\n')) |line|{
+        var a:chunk = undefined;
+        a.from_u8(line);
+        try contents.append(a);
+    }
 
-//     _ = bytesRead;
-//     // Interpret binary data as enum values
-//     var r: [*]eval.Program = @ptrCast(@alignCast(&buffer));
-//     // Close the file
-//     print("{any}\n", .{r[0]});
-//     _ = c.fclose(file);
-// }
+   try  parse_str_chunk(&contents);
+}
+
+pub fn main() !void {
+    try convert_asm_to_bytes();
+}
